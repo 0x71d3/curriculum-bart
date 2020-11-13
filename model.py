@@ -14,6 +14,8 @@ from transformers import (
     get_linear_schedule_with_warmup
 )
 
+from sampler import CompetenceBatchSampler
+
 
 def set_seed(seed):
   random.seed(seed)
@@ -66,7 +68,7 @@ class BartFinetuner(pl.LightningModule):
         outputs = self(
             input_ids=batch["source_ids"],
             attention_mask=batch["source_mask"],
-            labels=batch['target_ids']
+            labels=batch["target_ids"]
         )
 
         loss = outputs[0]
@@ -85,7 +87,7 @@ class BartFinetuner(pl.LightningModule):
         return {
             "avg_train_loss": avg_train_loss,
             "log": tensorboard_logs,
-            'progress_bar': tensorboard_logs
+            "progress_bar": tensorboard_logs
         }
 
     def validation_step(self, batch, batch_idx):
@@ -98,7 +100,7 @@ class BartFinetuner(pl.LightningModule):
         return {
             "avg_val_loss": avg_loss,
             "log": tensorboard_logs,
-            'progress_bar': tensorboard_logs
+            "progress_bar": tensorboard_logs
         }
 
     def configure_optimizers(self):
@@ -196,6 +198,54 @@ class BartFinetuner(pl.LightningModule):
         )
 
 
+class CurriculumBartFinetuner(BartFinetuner):
+    def __init__(self, hparams, get_dataset):
+        super().__init__(hparams, get_dataset)
+
+        self.difficulties = []
+        d_path = os.path.join(self.hparams.data_dir, "diffic.txt")
+        with open(d_path) as f:
+            for line in f:
+                self.difficulties.append(float(line))
+
+    def train_dataloader(self):
+        train_dataset = self.get_dataset(
+            tokenizer=self.tokenizer,
+            type_path="train",
+            args=self.hparams
+        )
+        sampler = CompetenceBatchSampler(
+            train_dataset,
+            batch_size=self.hparams.train_batch_size,
+            drop_last=True,
+            epoch=self.current_epoch,
+            num_epochs=self.hparams.num_train_epochs,
+            difficulties=self.difficulties
+        )
+        dataloader = DataLoader(
+            train_dataset,
+            batch_sampler=sampler,
+            num_workers=4
+        )
+        t_total = (
+            (
+                len(dataloader.dataset)
+                // (
+                    self.hparams.train_batch_size * max(1, self.hparams.n_gpu)
+                )
+            )
+            // self.hparams.gradient_accumulation_steps
+            * float(self.hparams.num_train_epochs)
+        )
+        scheduler = get_linear_schedule_with_warmup(
+            self.opt,
+            num_warmup_steps=self.hparams.warmup_steps,
+            num_training_steps=t_total
+        )
+        self.lr_scheduler = scheduler
+        return dataloader
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -223,15 +273,19 @@ class LoggingCallback(pl.Callback):
             with open(output_test_results_file, "w") as writer:
                 for key in sorted(metrics):
                     if key not in ["log", "progress_bar"]:
-                        logger.info("{} = {}\n".format(key, str(metrics[key])))
-                        writer.write("{} = {}\n".format(key, str(metrics[key])))
+                        logger.info(
+                            "{} = {}\n".format(key, str(metrics[key]))
+                        )
+                        writer.write(
+                            "{} = {}\n".format(key, str(metrics[key]))
+                        )
 
 
 args_dict = dict(
     data_dir="", # path for data files
     output_dir="", # path to save the checkpoints
-    model_name_or_path='facebook/bart-large',
-    tokenizer_name_or_path='facebook/bart-large',
+    model_name_or_path="facebook/bart-large",
+    tokenizer_name_or_path="facebook/bart-large",
     max_seq_length=512,
     learning_rate=1e-5,
     weight_decay=0.01,
@@ -244,7 +298,7 @@ args_dict = dict(
     n_gpu=1,
     early_stop_callback=False,
     fp_16=False, # if you want to enable 16-bit training then install apex and set this to true
-    opt_level='O1', # you can find out more on optimisation levels here https://nvidia.github.io/apex/amp.html#opt-levels-and-properties
+    opt_level="O1", # you can find out more on optimisation levels here https://nvidia.github.io/apex/amp.html#opt-levels-and-properties
     max_grad_norm=0.0, # if you enable 16-bit training then set this to a sensible value, 0.5 is a good default
     seed=42,
 )

@@ -1,4 +1,4 @@
-# multitask-bart
+# curriculum-bart
 
 model
 
