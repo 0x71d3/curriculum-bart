@@ -1,5 +1,6 @@
 __pycache__/
 
-tec*/
+lightning_logs/
+*_sorted/
 
 *.sh

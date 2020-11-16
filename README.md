@@ -9,3 +9,5 @@ https://github.com/pytorch/fairseq/blob/master/examples/bart/README.glue.md
 dataset
 
 http://saifmohammad.com/WebPages/SentimentEmotionLabeledData.html
+
+https://nlp.stanford.edu/sentiment/index.html

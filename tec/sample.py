@@ -8,7 +8,7 @@ labels = ['anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise']
 mention = re.compile(r'^@\w+\s+')
 hashtag = re.compile(r'\s+#\w+$')
 
-in_path, out_dir = sys.argv[1:]
+in_path = sys.argv[1]
 
 pairs = []
 with open(in_path) as f:
@@ -35,6 +35,6 @@ dict_of_pairs = {
 }
 
 for split, pairs in dict_of_pairs.items():
-    with open(os.path.join(out_dir, split + '.tsv'), 'w') as f:
+    with open(split + '.tsv', 'w') as f:
         for text, label in pairs:
             f.write(text + '\t' + str(label) + '\n')

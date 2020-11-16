@@ -74,7 +74,7 @@ for batch in tqdm(loader):
 
 print(metrics.accuracy_score(targets, outputs))
 
-print(metrics.classification_report(targets, outputs))
+print(metrics.classification_report(targets, outputs, digits=4))
 
 cm = metrics.confusion_matrix(targets, outputs)
 

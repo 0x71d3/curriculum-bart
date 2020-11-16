@@ -35,7 +35,7 @@ class BartFinetuner(pl.LightningModule):
         self.get_dataset = get_dataset
 
         config = BartConfig.from_pretrained(hparams.model_name_or_path)
-        config.num_labels = 6
+        config.num_labels = self.hparams.num_labels
 
         self.model = BartForSequenceClassification.from_pretrained(
             hparams.model_name_or_path,
@@ -219,8 +219,9 @@ class CurriculumBartFinetuner(BartFinetuner):
             batch_size=self.hparams.train_batch_size,
             drop_last=True,
             epoch=self.current_epoch,
-            num_epochs=self.hparams.num_train_epochs,
-            difficulties=self.difficulties
+            num_epochs=self.hparams.curriculum_epochs,
+            difficulties=self.difficulties,
+            init_competence=0.1
         )
         dataloader = DataLoader(
             train_dataset,

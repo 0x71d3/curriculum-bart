@@ -12,9 +12,14 @@ from model import (
 from dataset import EmotionDataset
 
 parser = argparse.ArgumentParser()
+
 for name, default in args_dict.items():
     parser.add_argument("--" + name, default=default, type=type(default))
+parser.add_argument("--num_labels", default=2, type=int)
+
 parser.add_argument("--curriculum", action="store_true")
+parser.add_argument("--curriculum_epochs", default=10, type=int)
+
 args = parser.parse_args()
 
 os.mkdir(args.output_dir)
