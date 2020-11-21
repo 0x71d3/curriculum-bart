@@ -3,7 +3,7 @@ import os
 import re
 import sys
 
-in_dir = sys.argv[1]
+in_dir, out_dir = sys.argv[1:]
 
 with open(os.path.join(in_dir, 'test.tsv')) as f:
     test_size = len(f.readlines())
@@ -24,6 +24,6 @@ for split in ['train', 'dev']:
         dict_of_pairs['val'] = pairs
 
 for split, pairs in dict_of_pairs.items():
-    with open(split + '.tsv', 'w') as f:
+    with open(os.path.join(out_dir, split + '.tsv'), 'w') as f:
         for sentence, label in pairs:
             f.write(sentence + '\t' + str(label) + '\n')

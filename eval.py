@@ -14,7 +14,7 @@ from transformers import BartTokenizer
 from dataset import EmotionDataset
 from model import BartFinetuner
 
-output_dir = sys.argv[1]
+data_dir, output_dir = sys.argv[1:]
 
 checkpoint_path = glob.glob(output_dir + '/checkpointepoch=*.ckpt')[0]
 model = BartFinetuner.load_from_checkpoint(
@@ -25,7 +25,7 @@ tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
 
 model.eval()
 
-dataset = EmotionDataset(tokenizer, 'tec', 'test', max_len=512)
+dataset = EmotionDataset(tokenizer, data_dir, 'test', max_len=512)
 loader = DataLoader(dataset, batch_size=2, shuffle=True)
 
 it = iter(loader)
@@ -78,11 +78,11 @@ print(metrics.classification_report(targets, outputs, digits=4))
 
 cm = metrics.confusion_matrix(targets, outputs)
 
-df_cm = pd.DataFrame(
-    cm,
-    index=["anger", "disgust", "fear", "joy", "sadness", "surprise"],
-    columns=["anger", "disgust", "fear", "joy", "sadness", "surprise"]
+labels = (
+    ["positive", "negative"] if data_dir == 'sst-2'
+    else ["anger", "disgust", "fear", "joy", "sadness", "surprise"]
 )
+df_cm = pd.DataFrame(cm, index=labels, columns=labels)
 plt.figure(figsize = (10, 7))
 sn.heatmap(df_cm, annot=True, cmap='Purples', fmt='g')
 
