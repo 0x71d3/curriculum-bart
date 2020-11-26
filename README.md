@@ -8,6 +8,12 @@ https://github.com/pytorch/fairseq/blob/master/examples/bart/README.glue.md
 
 dataset
 
+http://yanran.li/dailydialog
+
 http://saifmohammad.com/WebPages/SentimentEmotionLabeledData.html
 
 https://nlp.stanford.edu/sentiment/index.html
+
+curriculum
+
+https://arxiv.org/abs/1903.09848

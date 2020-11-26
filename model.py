@@ -9,6 +9,7 @@ import pytorch_lightning as pl
 from transformers import (
     AdamW,
     BartConfig,
+    BartForConditionalGeneration,
     BartForSequenceClassification,
     BartTokenizer,
     get_linear_schedule_with_warmup
@@ -18,14 +19,35 @@ from sampler import CompetenceBatchSampler
 
 
 def set_seed(seed):
-  random.seed(seed)
-  np.random.seed(seed)
-  torch.manual_seed(seed)
-  if torch.cuda.is_available():
-    torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 set_seed(42)
+
+
+def label_smoothed_nll_loss(lprobs, target, epsilon, ignore_index=-100):
+    """From fairseq"""
+    if target.dim() == lprobs.dim() - 1:
+        target = target.unsqueeze(-1)
+    nll_loss = -lprobs.gather(dim=-1, index=target)
+    smooth_loss = -lprobs.sum(dim=-1, keepdim=True)
+    if ignore_index is not None:
+        pad_mask = target.eq(ignore_index)
+        nll_loss.masked_fill_(pad_mask, 0.0)
+        smooth_loss.masked_fill_(pad_mask, 0.0)
+    else:
+        nll_loss = nll_loss.squeeze(-1)
+        smooth_loss = smooth_loss.squeeze(-1)
+
+    nll_loss = nll_loss.sum()  # mean()? Scared to break other math.
+    smooth_loss = smooth_loss.sum()
+    eps_i = epsilon / lprobs.size(-1)
+    loss = (1.0 - epsilon) * nll_loss + eps_i * smooth_loss
+    return loss, nll_loss
 
 
 class BartFinetuner(pl.LightningModule):
@@ -34,13 +56,20 @@ class BartFinetuner(pl.LightningModule):
         self.hparams = hparams
         self.get_dataset = get_dataset
 
-        config = BartConfig.from_pretrained(hparams.model_name_or_path)
-        config.num_labels = self.hparams.num_labels
+        if self.hparams.task == "generation":
+            self.model = BartForConditionalGeneration.from_pretrained(
+                hparams.model_name_or_path
+            )
 
-        self.model = BartForSequenceClassification.from_pretrained(
-            hparams.model_name_or_path,
-            config=config
-        )
+        else:
+            config = BartConfig.from_pretrained(hparams.model_name_or_path)
+            config.num_labels = hparams.num_labels
+            
+            self.model = BartForSequenceClassification.from_pretrained(
+                hparams.model_name_or_path,
+                config=config
+            )
+
         self.tokenizer = BartTokenizer.from_pretrained(
             hparams.tokenizer_name_or_path
         )
@@ -65,13 +94,35 @@ class BartFinetuner(pl.LightningModule):
         )
 
     def _step(self, batch):
-        outputs = self(
-            input_ids=batch["source_ids"],
-            attention_mask=batch["source_mask"],
-            labels=batch["target_ids"]
-        )
+        if self.hparams.task == "generation":
+            pad_token_id = self.tokenizer.pad_token_id
+            target_ids = batch["target_ids"]
 
-        loss = outputs[0]
+            decoder_input_ids = target_ids[:, :-1].contiguous()  # Why this line?
+            lm_labels = target_ids[:, 1:].clone()  # why clone?
+
+            outputs = self(
+                input_ids=batch["source_ids"],
+                attention_mask=batch["source_mask"],
+                decoder_input_ids=decoder_input_ids
+            )
+
+            lprobs = torch.nn.functional.log_softmax(outputs[0], dim=-1)
+            loss, nll_loss = label_smoothed_nll_loss(
+                lprobs,
+                lm_labels,
+                self.hparams.label_smoothing,
+                self.tokenizer.pad_token_id
+            )
+        
+        else:
+            outputs = self(
+                input_ids=batch["source_ids"],
+                attention_mask=batch["source_mask"],
+                labels=batch["target_ids"]
+            )
+
+            loss = outputs[0]
         
         return loss
 
@@ -283,23 +334,24 @@ class LoggingCallback(pl.Callback):
 
 
 args_dict = dict(
-    data_dir="", # path for data files
-    output_dir="", # path to save the checkpoints
+    data_dir="",  # path for data files
+    output_dir="",  # path to save the checkpoints
     model_name_or_path="facebook/bart-large",
     tokenizer_name_or_path="facebook/bart-large",
     max_seq_length=512,
-    learning_rate=1e-5,
+    learning_rate=3e-5,
     weight_decay=0.01,
     adam_epsilon=1e-8,
-    warmup_steps=0,
+    warmup_steps=500,
     train_batch_size=16,
     eval_batch_size=16,
     num_train_epochs=10,
     gradient_accumulation_steps=1,
     n_gpu=1,
     early_stop_callback=False,
-    fp_16=False, # if you want to enable 16-bit training then install apex and set this to true
-    opt_level="O1", # you can find out more on optimisation levels here https://nvidia.github.io/apex/amp.html#opt-levels-and-properties
-    max_grad_norm=0.0, # if you enable 16-bit training then set this to a sensible value, 0.5 is a good default
+    fp_16=False,  # if you want to enable 16-bit training then install apex and set this to true
+    opt_level="O1",  # you can find out more on optimisation levels here https://nvidia.github.io/apex/amp.html#opt-levels-and-properties
+    max_grad_norm=0.1,  # if you enable 16-bit training then set this to a sensible value, 0.5 is a good default
     seed=42,
+    label_smoothing=0.1
 )

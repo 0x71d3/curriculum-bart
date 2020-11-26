@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 
 import pytorch_lightning as pl
 
@@ -9,7 +10,7 @@ from model import (
     LoggingCallback,
     args_dict
 )
-from dataset import EmotionDataset
+from dataset import ResponseDataset, EmotionDataset
 
 parser = argparse.ArgumentParser()
 
@@ -17,11 +18,15 @@ for name, default in args_dict.items():
     parser.add_argument("--" + name, default=default, type=type(default))
 parser.add_argument("--num_labels", default=2, type=int)
 
+parser.add_argument("--task", choices=["generation", "classification"])
+
 parser.add_argument("--curriculum", action="store_true")
 parser.add_argument("--curriculum_epochs", default=10, type=int)
 
 args = parser.parse_args()
 
+if os.path.isdir(args.output_dir):
+    shutil.rmtree(args.output_dir)
 os.mkdir(args.output_dir)
 
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
@@ -47,22 +52,33 @@ train_params = dict(
 
 
 def get_dataset(tokenizer, type_path, args):
-    return EmotionDataset(
-        tokenizer=tokenizer,
-        data_dir=args.data_dir,
-        type_path=type_path,
-        max_len=args.max_seq_length
-    )
+    if args.task == "generation":
+        return ResponseDataset(
+            tokenizer=tokenizer,
+            data_dir=args.data_dir,
+            type_path=type_path,
+            max_len=args.max_seq_length
+        )
+    else:
+        return EmotionDataset(
+            tokenizer=tokenizer,
+            data_dir=args.data_dir,
+            type_path=type_path,
+            max_len=args.max_seq_length
+        )
 
 
+# initialize model
 model = (
     CurriculumBartFinetuner(args, get_dataset) if args.curriculum
     else BartFinetuner(args, get_dataset)
 )
+
+# initialize trainer
 trainer = pl.Trainer(**train_params)
+
+# start fine-tuning
 trainer.fit(model)
 
-# os.mkdir("bart_large_emotion")
-# 
 # ## save the model this way so next time you can load it using T5ForConditionalGeneration.from_pretrained
-# model.model.save_pretrained("bart_large_emotion")
+# model.model.save_pretrained(args.output_dir)
