@@ -272,7 +272,7 @@ class CurriculumBartFinetuner(BartFinetuner):
             epoch=self.current_epoch,
             num_epochs=self.hparams.curriculum_epochs,
             difficulties=self.difficulties,
-            init_competence=0.1
+            init_competence=self.hparams.init_competence
         )
         dataloader = DataLoader(
             train_dataset,

@@ -11,12 +11,12 @@ from dataset import ResponseDataset
 
 data_dir, output_dir = sys.argv[1:]
 
-# model = BartForConditionalGeneration.from_pretrained(output_dir).cuda()
-checkpoint_path = glob.glob(output_dir + '/checkpointepoch=*.ckpt')[0]
-model = BartFinetuner.load_from_checkpoint(
-    checkpoint_path,
-    get_dataset=None
-).model.cuda()
+model = BartForConditionalGeneration.from_pretrained(output_dir).cuda()
+# checkpoint_path = glob.glob(output_dir + '/checkpointepoch=*.ckpt')[0]
+# model = BartFinetuner.load_from_checkpoint(
+#     checkpoint_path,
+#     get_dataset=None
+# ).model.cuda()
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
 
 dataset = ResponseDataset(tokenizer, data_dir, 'test', 128)

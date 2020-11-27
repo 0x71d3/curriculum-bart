@@ -15,13 +15,16 @@ from dataset import ResponseDataset, EmotionDataset
 parser = argparse.ArgumentParser()
 
 for name, default in args_dict.items():
-    parser.add_argument("--" + name, default=default, type=type(default))
-parser.add_argument("--num_labels", default=2, type=int)
+    parser.add_argument('--' + name, default=default, type=type(default))
+parser.add_argument('--num_labels', default=2, type=int)
 
-parser.add_argument("--task", choices=["generation", "classification"])
+parser.add_argument('--task', choices=['generation', 'classification'])
 
-parser.add_argument("--curriculum", action="store_true")
-parser.add_argument("--curriculum_epochs", default=10, type=int)
+parser.add_argument('--curriculum', action='store_true')
+parser.add_argument('--curriculum_epochs', default=10, type=int)
+parser.add_argument('--init_competence', default=0.01, type=float)
+
+parser.add_argument('--save_pretrained', action='store_true')
 
 args = parser.parse_args()
 
@@ -31,9 +34,9 @@ os.mkdir(args.output_dir)
 
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
     filepath=args.output_dir,
-    prefix="checkpoint",
-    monitor="val_loss",
-    mode="min",
+    prefix='checkpoint',
+    monitor='val_loss',
+    mode='min',
     save_top_k=1
 )
 
@@ -52,7 +55,7 @@ train_params = dict(
 
 
 def get_dataset(tokenizer, type_path, args):
-    if args.task == "generation":
+    if args.task == 'generation':
         return ResponseDataset(
             tokenizer=tokenizer,
             data_dir=args.data_dir,
@@ -80,5 +83,6 @@ trainer = pl.Trainer(**train_params)
 # start fine-tuning
 trainer.fit(model)
 
-# ## save the model this way so next time you can load it using T5ForConditionalGeneration.from_pretrained
-# model.model.save_pretrained(args.output_dir)
+## save the model this way so next time you can load it using T5ForConditionalGeneration.from_pretrained
+if args.save_pretrained:
+    model.model.save_pretrained(args.output_dir)
