@@ -44,8 +44,9 @@ class CompetenceBatchSampler(Sampler):
         i2d = self.difficulties
 
         counter = Counter(i2d.tolist())
-        j2d = torch.as_tensor(list(counter), dtype=torch.double)  # difficulty
-        j2f = torch.as_tensor(list(counter.values()), dtype=torch.int64)  # frequency
+        sorted_d = sorted(counter)
+        j2d = torch.as_tensor(sorted_d, dtype=torch.double)  # difficulty
+        j2f = torch.as_tensor([counter[d] for d in sorted_d], dtype=torch.int64)  # frequency
 
         j2cdf = j2f.cumsum(dim=0, dtype=torch.double) / j2f.sum()
 

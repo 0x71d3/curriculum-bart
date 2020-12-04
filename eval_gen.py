@@ -33,7 +33,7 @@ with open(os.path.join(output_dir, 'pred.txt')) as f:
     for line in f:
         hypotheses.append(word_tokenize(line))
 
-print(f'BLEU\t{corpus_bleu(list_of_references, hypotheses)}\n')
+print(f'BLEU\t{corpus_bleu(list_of_references, hypotheses)}')
 for n in range(1, 3):
     print(f'distinct-{n}\t{corpus_dist(hypotheses, n)}')
-print(f'\navg len\t{avg_len(hypotheses)}')
+print(f'avg len\t{avg_len(hypotheses)}')

@@ -76,8 +76,8 @@ class EmotionDataset(Dataset):
         source_ids = self.inputs[index]['input_ids'].squeeze()
         target_ids = self.targets[index]['input_ids'].squeeze()
 
-        src_mask = self.inputs[index]['attention_mask'].squeeze(0)  # might need to squeeze
-        target_mask = self.targets[index]['attention_mask'].squeeze(0)  # might need to squeeze
+        src_mask = self.inputs[index]['attention_mask'].squeeze()  # might need to squeeze
+        target_mask = self.targets[index]['attention_mask'].squeeze()  # might need to squeeze
 
         return {
             'source_ids': source_ids,
