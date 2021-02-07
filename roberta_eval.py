@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from transformers import RobertaTokenizer
 
 from dataset import EmotionDataset
-from model_roberta import RobertaFinetuner
+from roberta_model import RobertaFinetuner
 
 data_dir, output_dir = sys.argv[1:]
 
@@ -83,11 +83,11 @@ df_cm = pd.DataFrame(
     index=['anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise'],
     columns=['anger', 'disgust', 'fear', 'joy', 'sadness', 'surprise']
 )
-plt.figure(figsize = (10, 7))
+plt.figure(figsize=(10, 7))
 sn.heatmap(df_cm, annot=True, cmap='Purples', fmt='g')
 
 # save results
-with open(os.path.join(output_dir, 'outputs.txt'), 'w') as f:
+with open(os.path.join(output_dir, 'pred.txt'), 'w') as f:
     for dec in outputs:
         f.write(str(dec) + '\n')
-plt.savefig(os.path.join(output_dir, 'confusion_matrix.png'))
+plt.savefig(os.path.join(output_dir, 'heatmap.png'))

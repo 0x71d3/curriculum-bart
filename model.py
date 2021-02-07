@@ -4,7 +4,7 @@ import random
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import BatchSampler, DataLoader
 import pytorch_lightning as pl
 from transformers import (
     AdamW,
@@ -15,7 +15,7 @@ from transformers import (
     get_linear_schedule_with_warmup
 )
 
-from sampler import CompetenceBatchSampler
+from sampler import CompetenceSampler, CompetenceBatchSampler
 
 
 def set_seed(seed):
@@ -265,6 +265,16 @@ class CurriculumBartFinetuner(BartFinetuner):
             type_path="train",
             args=self.hparams
         )
+        # sampler = BatchSampler(
+        #     CompetenceSampler(
+        #         train_dataset,
+        #         epoch=self.current_epoch,
+        #         num_epochs=self.hparams.curriculum_epochs,
+        #         difficulties=self.difficulties,
+        #         init_competence=self.hparams.init_competence
+        #     ),
+        #     batch_size=self.hparams.train_batch_size
+        # )
         sampler = CompetenceBatchSampler(
             train_dataset,
             batch_size=self.hparams.train_batch_size,

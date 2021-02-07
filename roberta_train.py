@@ -5,7 +5,7 @@ import sys
 
 import pytorch_lightning as pl
 
-from model_roberta import RobertaFinetuner, LoggingCallback, args_dict
+from roberta_model import RobertaFinetuner, LoggingCallback, args_dict
 from dataset import EmotionDataset
 
 parser = argparse.ArgumentParser()

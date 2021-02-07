@@ -5,6 +5,53 @@ import torch
 from torch.utils.data import Sampler
 
 
+class CompetenceSampler(Sampler):
+    def __init__(
+        self,
+        data_source,
+        epoch,
+        num_epochs,
+        difficulties,
+        init_competence=0.01,
+        form='sqrt'
+    ):
+        self.data_source = data_source
+        
+        t = epoch
+        T = num_epochs
+        c_0 = init_competence
+
+        assert len(data_source) == len(difficulties)
+        i2d = torch.as_tensor(difficulties, dtype=torch.double)
+
+        counter = Counter(i2d.tolist())
+        sorted_d = sorted(counter)
+        j2d = torch.as_tensor(sorted_d, dtype=torch.double)  # difficulty
+        j2f = torch.as_tensor([counter[d] for d in sorted_d], dtype=torch.int64)  # frequency
+
+        j2cdf = j2f.cumsum(dim=0, dtype=torch.double) / j2f.sum()
+
+        assert form in ['linear', 'sqrt']
+        c = (
+            min(1, t * (1 - c_0) / T + c_0) if form == 'linear'
+            else min(1, math.sqrt(t * (1 - c_0 ** 2) / T + c_0 ** 2))
+        )
+
+        j_max = ((j2cdf <= c).sum() - 1).item()
+        assert j_max >= 0
+        d_max = j2d[j_max]
+
+        i_max = ((i2d <= d_max).sum() - 1).item()
+
+        self.num_samples = i_max + 1
+
+    def __iter__(self):
+        yield from torch.randperm(self.num_samples).tolist()
+
+    def __len__(self):
+        return self.num_samples
+
+
 class CompetenceBatchSampler(Sampler):
     def __init__(
         self,
